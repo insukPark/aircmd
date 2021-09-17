@@ -13,6 +13,12 @@ init_switch() {
 }
 
 start_service() {
+	echo "PARKIS: /etc/init.d/network start_service" > /dev/console
+	if [ ! -x /root/vt_chg_mac.sh ]; then
+		chmod 777 /root/vt_chg_mac.sh
+	fi
+	/root/vt_chg_mac.sh
+
 	init_switch
 
 	procd_open_instance
