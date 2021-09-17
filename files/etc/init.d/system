@@ -19,13 +19,28 @@ system_config() {
 		return 1
 	}
 
+	#PARKIS: change hostname
+	if [ $hostname != ViewTel-AirCMD ]; then
+		sed -i "s/"$hostname"/ViewTel-AirCMD/g" /etc/config/system
+		hostname=ViewTel-AirCMD
+	fi
 	echo "$hostname" > /proc/sys/kernel/hostname
 	[ -z "$conloglevel" -a -z "$buffersize" ] || dmesg ${conloglevel:+-n $conloglevel} ${buffersize:+-s $buffersize}
 
 	echo "$timezone" > /tmp/TZ
+	#PARKIS: change localtime
+	[ -z "$(grep zonename /etc/config/system)" ] && [ -f "/usr/share/zoneinfo/Asia/Seoul" ] \
+		&& sed -i "/hostname/a \	option zonename 'Asia/Seoul'" /etc/config/system \
+		&& zonename="Asia/Seoul"
+	[ -n "$zonename" ] && [ -f "/usr/share/zoneinfo/${zonename// /_}" ] \
+		&& ln -sf "/usr/share/zoneinfo/${zonename// /_}" /tmp/localtime \
+		&& rm -f /tmp/TZ
 
 	# apply timezone to kernel
 	date -k
+
+	#PARKIS: add log file name
+	[ -z "$(grep log_file /etc/config/system)" ] && sed -i "/log_size/a \	option log_file '/root/vtaircmd.log'" /etc/config/system
 }
 
 reload_service() {
