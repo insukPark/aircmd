@@ -1,0 +1,25 @@
+#!/bin/sh
+
+if [[ -z "$1" ]]; then
+	echo "Usage: wanok <option: http | ssh | ftp | [port num]>" > /dev/console
+	exit
+fi
+
+wanip="$(ifconfig | grep -A 1 'eth0.2' | tail -1 | cut -d ':' -f 2 | cut -d ' ' -f 1)"
+
+if [[ "$1" == http ]]; then
+	portnum=80
+elif [[ "$1" == ssh ]]; then
+	portnum=22
+elif [[ "$1" == ftp ]]; then
+	portnum=21
+else
+	portnum=$1
+fi
+
+echo "iptables -I INPUT -p tcp -s 0.0.0.0/0 -d $wanip --dport $portnum -j ACCEPT" > /dev/console
+iptables -I INPUT -p tcp -s 0.0.0.0/0 -d $wanip --dport $portnum -j ACCEPT
+
+echo "iptables -I FORWARD -m tcp -p tcp -d $wanip --dport $portnum -j ACCEPT" > /dev/console
+iptables -I FORWARD -m tcp -p tcp -d $wanip --dport $portnum -j ACCEPT
+
