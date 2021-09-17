@@ -1,0 +1,12 @@
+/dts-v1/;
+
+#include "VT-VX2000.dtsi"
+
+/ {
+	compatible = "viewtel,vt-vx2000-16m", "viewtel,vt-vx2000", "mediatek,mt7621-soc";
+	model = "VT-VX2000 (16M)";
+};
+
+&firmware {
+	reg = <0x50000 0xfb0000>;
+};
