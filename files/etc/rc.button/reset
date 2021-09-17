@@ -1,20 +1,67 @@
 #!/bin/sh
 
-[ "${ACTION}" = "released" ] || exit 0
-
 . /lib/functions.sh
 
-logger "$BUTTON pressed for $SEEN seconds"
+OVERLAY="$( grep ' /overlay ' /proc/mounts )"
 
-if [ "$SEEN" -lt 1 ]
-then
-        echo "REBOOT" > /dev/console
-        sync
-        reboot
-elif [ "$SEEN" -gt 5 ]
-then
-        echo "FACTORY RESET" > /dev/console
-        jffs2reset -y && reboot &
-fi
+case "$ACTION" in
+pressed)
+	[ -z "$OVERLAY" ] && return 0
+
+	return 5
+;;
+timeout)
+	. /etc/diag.sh
+	set_state failsafe
+;;
+released)
+	if [ "$SEEN" -lt 2 ]
+	then
+		logger -t WPS detected push button for wps
+		echo "WPS..." > /dev/console
+		echo timer > /sys/devices/platform/leds/leds/zbt-wg3526:green:status/trigger
+		cd /var/run/hostapd
+		for socket in *; do
+			[ -S "$socket" ] || continue
+			hostapd_cli -i "$socket" wps_pbc
+			logger -t WPS "$socket" actived
+		done
+
+		echo "sleep 2" > /dev/console
+		sleep 2
+		cnt=1
+		for socket in *; do
+			[ -S "$socket" ] || continue
+			for i in $(seq 1 60); do
+				if [[ ! -z "$(hostapd_cli -i "$socket" wps_get_status | grep 'PBC Status: Active')" ]]; then
+					echo "sleep 2" > /dev/console
+					sleep 2
+					let cnt=cnt+1
+					if [ $cnt == 60 ]; then
+						echo "No Active, So Exit !!!" > /dev/console
+						logger -t WPS deactived
+						echo default-on > /sys/devices/platform/leds/leds/zbt-wg3526:green:status/trigger
+						exit 0
+					fi
+				fi
+			done
+		done
+
+		sleep 1
+		echo default-on > /sys/devices/platform/leds/leds/zbt-wg3526:green:status/trigger
+	elif [ "$SEEN" -ge 5 -a -n "$OVERLAY" ]
+	then
+		echo "FACTORY RESET" > /dev/console
+		logger detected push button for factory reset
+		jffs2reset -y && reboot &
+	elif [ "$SEEN" -ge 2 ]
+	then
+		echo "REBOOT" > /dev/console
+		logger detected push button for reset
+		sync
+		reboot
+	fi
+;;
+esac
 
 return 0
