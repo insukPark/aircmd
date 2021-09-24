@@ -48,14 +48,14 @@ if [[ ! -z "$(grep f8:5e:3c:12:d7:84 /etc/config/network)" ]]; then
 	[ -z "$(grep VX2000-5G-${lanmac:15:2} /root/wireless.conf)" ] && \
 		sed -i "s/VX2000-5G/VX2000-5G-${lanmac:15:2}/g" /root/wireless.conf
 	cp /root/wireless.conf /etc/config/wireless
-	sed -i "s/00:1A:56:99:99:99/"$ra0mac"/g" /etc/config/wireless
-	sed -i "s/00:1A:56:99:99:98/"$ra1mac"/g" /etc/config/wireless
+	[ ${#ra0mac} == 17 ] && sed -i "s/00:1A:56:99:99:99/"$ra0mac"/g" /etc/config/wireless
+	[ ${#ra1mac} == 17 ] && sed -i "s/00:1A:56:99:99:98/"$ra1mac"/g" /etc/config/wireless
 
 	#change ntp server
 	sed -i "s/1.openwrt.pool.ntp.org/1.kr.pool.ntp.org/g" /etc/config/system
 	sed -i "s/2.openwrt.pool.ntp.org/2.asia.pool.ntp.org/g" /etc/config/system
 	sed -i "s/3.openwrt.pool.ntp.org/3.time.google.com/g" /etc/config/system
-elif [[ ${#lanmac} == 17  &&  -z "$(grep "$lanmac" /etc/config/network)" ]]; then
+elif [ ${#lanmac} == 17 ] &&  [ -z "$(grep "$lanmac" /etc/config/network)" ]; then
 	grep "option macaddr" /etc/config/network > $TMPFILE
 
 	firstLine=1
@@ -69,20 +69,50 @@ elif [[ ${#lanmac} == 17  &&  -z "$(grep "$lanmac" /etc/config/network)" ]]; the
 		fi
 	done < $TMPFILE
 
-	if [ ${#ra0mac} == 17 ]; then
-		grep "option macaddr" /etc/config/wireless > $TMPFILE
+	rm $TMPFILE
+elif [ ${#wanmac} == 17 ] &&  [ -z "$(grep "$wanmac" /etc/config/network)" ]; then
+	grep "option macaddr" /etc/config/network > $TMPFILE
 
-		firstLine=1
-		while read line
-		do
-			if [ $firstLine == 1 ]; then
-				sed -i "s/$line/option macaddr '$ra0mac'/g" /etc/config/wireless
-				let firstLine=firstLine+1
-			elif [ ${#ra1mac} == 17 ]; then
-				sed -i "s/$line/option macaddr '$ra1mac'/g" /etc/config/wireless
-			fi
-		done < $TMPFILE
-	fi
+	firstLine=1
+	while read line
+	do
+		if [ $firstLine == 1 ]; then
+			let firstLine=firstLine+1
+		else
+			sed -i "s/$line/option macaddr '$wanmac'/g" /etc/config/network
+		fi
+	done < $TMPFILE
+
+	rm $TMPFILE
+fi
+
+if [ ${#ra0mac} == 17 ] &&  [ -z "$(grep "$ra0mac" /etc/config/wireless)" ]; then
+	grep "option macaddr" /etc/config/wireless > $TMPFILE
+
+	firstLine=1
+	while read line
+	do
+		if [ $firstLine == 1 ]; then
+			sed -i "s/$line/option macaddr '$ra0mac'/g" /etc/config/wireless
+			let firstLine=firstLine+1
+		elif [ ${#ra1mac} == 17 ]; then
+			sed -i "s/$line/option macaddr '$ra1mac'/g" /etc/config/wireless
+		fi
+	done < $TMPFILE
+
+	rm $TMPFILE
+elif [ ${#ra1mac} == 17 ] &&  [ -z "$(grep "$ra1mac" /etc/config/wireless)" ]; then
+	grep "option macaddr" /etc/config/wireless > $TMPFILE
+
+	firstLine=1
+	while read line
+	do
+		if [ $firstLine == 1 ]; then
+			let firstLine=firstLine+1
+		else
+			sed -i "s/$line/option macaddr '$ra1mac'/g" /etc/config/wireless
+		fi
+	done < $TMPFILE
 
 	rm $TMPFILE
 fi
