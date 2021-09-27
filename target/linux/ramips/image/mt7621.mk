@@ -90,29 +90,30 @@ define Build/ubnt-erx-factory-image
 	fi
 endef
 
-define Device/zbt-wg3526-16M
+define Device/vt-vx2000-16M
 #  DTS := ZBT-WG3526-16M
   DTS := VT-VX2000-16M
   IMAGE_SIZE := $(ralink_default_fw_size_16M)
-  SUPPORTED_DEVICES += zbt-wg3526
+  SUPPORTED_DEVICES += vt-vx2000
   DEVICE_TITLE := VX2000-EVK
 #  DEVICE_TITLE := ZBT WG3526 (16MB flash)
   DEVICE_PACKAGES := \
 	kmod-ata-core kmod-ata-ahci kmod-sdhci-mt7620 kmod-mt7603 kmod-mt76x2 \
-	kmod-usb3 kmod-usb-ledtrig-usbport wpad-basic
-endef
-TARGET_DEVICES += zbt-wg3526-16M
-
-define Device/vt-vx2000-16M
-  DTS := VT-VX2000-16M
-  IMAGE_SIZE := $(ralink_default_fw_size_16M)
-  SUPPORTED_DEVICES += vt-vx2000
-  DEVICE_TITLE := VX2000
-  DEVICE_PACKAGES := \
-	kmod-ata-core kmod-ata-ahci kmod-sdhci-mt7620 kmod-mt7603 kmod-mt76x2 \
-	kmod-usb-ledtrig-usbport wpad hostapd-utils
+	wpad hostapd-utils
+#	kmod-usb3 kmod-usb-ledtrig-usbport wpad-basic
 endef
 TARGET_DEVICES += vt-vx2000-16M
+
+#define Device/vt-vx2000-16M
+#  DTS := VT-VX2000-16M
+#  IMAGE_SIZE := $(ralink_default_fw_size_16M)
+#  SUPPORTED_DEVICES += vt-vx2000
+#  DEVICE_TITLE := VX2000
+#  DEVICE_PACKAGES := \
+#	kmod-ata-core kmod-ata-ahci kmod-sdhci-mt7620 kmod-mt7603 kmod-mt76x2 \
+#	kmod-usb-ledtrig-usbport wpad hostapd-utils
+#endef
+#TARGET_DEVICES += vt-vx2000-16M
 
 define Device/zbt-wg3526-32M
   DTS := ZBT-WG3526-32M
