@@ -60,40 +60,45 @@ while true; do
 	fi
 
 # check selection switch and apply 2.4G/5G only
-	if [ -e /root/2g-switch ]; then
-		if [ $select2gswitchcnt -eq 1 ]; then
+	if [ ! -e /root/config/wifi-disable ]; then
+		if [ -e /root/2g-switch ]; then
+			if [ $select2gswitchcnt -eq 1 ]; then
 #echo "2.4G !" > /dev/console
-			uci set wireless.default_radio1.disabled='1'
-	 		uci del wireless.default_radio0.disabled
-	 		uci commit wireless
+				uci set wireless.default_radio1.disabled='1'
+		 		uci del wireless.default_radio0.disabled
+		 		uci commit wireless
 	 		/sbin/wifi reload
 
-			let select2gswitchcnt=2
-		elif [ $select2gswitchcnt -eq 0 ]; then
-			# maybe after booting, so need to change
-			let select2gswitchcnt=2
-		elif [ $select5gswitchcnt -eq 2 ]; then
-			# change wifi 2g/5g next turn
-			let select2gswitchcnt=1
-			let select5gswitchcnt=0
+				let select2gswitchcnt=2
+			elif [ $select2gswitchcnt -eq 0 ]; then
+				# maybe after booting, so need to change
+				let select2gswitchcnt=2
+			elif [ $select5gswitchcnt -eq 2 ]; then
+				# change wifi 2g/5g next turn
+				let select2gswitchcnt=1
+				let select5gswitchcnt=0
+			fi
+		else
+			if [ $select5gswitchcnt -eq 1 ]; then
+#echo "5G !" > /dev/console
+				uci set wireless.default_radio0.disabled='1'
+				uci del wireless.default_radio1.disabled
+				uci commit wireless
+				/sbin/wifi reload
+
+				let select5gswitchcnt=2
+			elif [ $select5gswitchcnt -eq 0 ]; then
+				# maybe after booting, so need to change
+				let select5gswitchcnt=2
+			elif [ $select2gswitchcnt -eq 2 ]; then
+				# change wifi 2g/5g next turn
+				let select5gswitchcnt=1
+				let select2gswitchcnt=0
+			fi
 		fi
 	else
-		if [ $select5gswitchcnt -eq 1 ]; then
-#echo "5G !" > /dev/console
-			uci set wireless.default_radio0.disabled='1'
-			uci del wireless.default_radio1.disabled
-			uci commit wireless
-			/sbin/wifi reload
-
-			let select5gswitchcnt=2
-		elif [ $select5gswitchcnt -eq 0 ]; then
-			# maybe after booting, so need to change
-			let select5gswitchcnt=2
-		elif [ $select2gswitchcnt -eq 2 ]; then
-			# change wifi 2g/5g next turn
-			let select5gswitchcnt=1
-			let select2gswitchcnt=0
-		fi
+		let select2gswitchcnt=0
+		let select5gswitchcnt=0
 	fi
 
 # sleep time for loop
