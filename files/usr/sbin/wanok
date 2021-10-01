@@ -5,16 +5,28 @@ if [[ -z "$1" ]]; then
 	exit
 fi
 
+for arg in "$@"
+do
+
 wanip="$(ifconfig | grep -A 1 'eth0.2' | tail -1 | cut -d ':' -f 2 | cut -d ' ' -f 1)"
 
-if [[ "$1" == http ]]; then
+if [[ "$arg" == http ]]; then
 	portnum=80
-elif [[ "$1" == ssh ]]; then
+elif [[ "$arg" == ssh ]]; then
 	portnum=22
-elif [[ "$1" == ftp ]]; then
+elif [[ "$arg" == ftp ]]; then
 	portnum=21
+	if [[ -z "$(grep anonymous=YES /etc/vsftpd.conf)" ]]; then
+		sed -i "s/anonymous_enable=NO/anonymous_enable=YES/g" /etc/vsftpd.conf
+		mkdir -p /home/ftp
+		/etc/init.d/vsftpd restart
+	fi
 else
-	portnum=$1
+	if [[ -z "${arg//[0-9]/}" ]]; then  # check number
+		portnum=$arg
+	else
+		continue
+	fi
 fi
 
 echo "iptables -I INPUT -p tcp -s 0.0.0.0/0 -d $wanip --dport $portnum -j ACCEPT" > /dev/console
@@ -23,3 +35,4 @@ iptables -I INPUT -p tcp -s 0.0.0.0/0 -d $wanip --dport $portnum -j ACCEPT
 echo "iptables -I FORWARD -m tcp -p tcp -d $wanip --dport $portnum -j ACCEPT" > /dev/console
 iptables -I FORWARD -m tcp -p tcp -d $wanip --dport $portnum -j ACCEPT
 
+done
