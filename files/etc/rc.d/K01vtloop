@@ -1,0 +1,13 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2021 Viewtel.co.kr
+
+USE_PROCD=1
+START=90
+STOP=01
+
+start_service() {
+	procd_open_instance
+	procd_set_param command /bin/sh "/root/vtloop.sh"
+	procd_close_instance
+}
+
