@@ -19,10 +19,11 @@ system_config() {
 		return 1
 	}
 
+	echo "PARKIS: /etc/init.d/system system_config" > /dev/console
 	#PARKIS: change hostname
-	if [ $hostname != ViewTel-AirCMD ]; then
-		sed -i "s/"$hostname"/ViewTel-AirCMD/g" /etc/config/system
-		hostname=ViewTel-AirCMD
+	if [ $hostname != VX2000 ]; then
+		sed -i "s/"$hostname"/VX2000/g" /etc/config/system
+		hostname=VX2000
 	fi
 	echo "$hostname" > /proc/sys/kernel/hostname
 	[ -z "$conloglevel" -a -z "$buffersize" ] || dmesg ${conloglevel:+-n $conloglevel} ${buffersize:+-s $buffersize}
