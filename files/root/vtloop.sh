@@ -12,6 +12,12 @@ wlan1disablecnt=0
 select2gswitchcnt=0
 select5gswitchcnt=0
 
+if [[ -e /root/config/wps-mode-always-on ]]; then
+	rm -rf /root/config/wps-mode-always-on
+	logger -t WPS execute /root/vt_wps.sh mode on in vtloop.sh
+	/root/vt_wps.sh mode on &
+fi
+
 while true; do
 # off 2.4G/5G LED for non-using wifi
 #	if [[ ! -z "$(uci show wireless | grep "wireless.default_radio0.disabled='1'")" ]]; then
@@ -61,13 +67,16 @@ while true; do
 
 # check selection switch and apply 2.4G/5G only
 	if [ ! -e /root/config/wifi-disable ]; then
+		# read GPIO 17, maybe low means 2G && high means 5G
 		if [ -e /root/2g-switch ]; then
 			if [ $select2gswitchcnt -eq 1 ]; then
-#echo "2.4G !" > /dev/console
+echo "2.4G ! control GPIO 5 to low" > /dev/console
 				uci set wireless.default_radio1.disabled='1'
+				uci set wireless.radio1.disabled='1'
 		 		uci del wireless.default_radio0.disabled
+		 		uci del wireless.radio0.disabled
 		 		uci commit wireless
-	 		/sbin/wifi reload
+		 		/sbin/wifi reload
 
 				let select2gswitchcnt=2
 			elif [ $select2gswitchcnt -eq 0 ]; then
@@ -80,9 +89,11 @@ while true; do
 			fi
 		else
 			if [ $select5gswitchcnt -eq 1 ]; then
-#echo "5G !" > /dev/console
+echo "5G ! control GPIO 5 to high" > /dev/console
 				uci set wireless.default_radio0.disabled='1'
+				uci set wireless.radio0.disabled='1'
 				uci del wireless.default_radio1.disabled
+				uci del wireless.radio1.disabled
 				uci commit wireless
 				/sbin/wifi reload
 
