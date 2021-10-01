@@ -51,7 +51,19 @@ if [[ ! -z "$(grep f8:5e:3c:12:d7:84 /etc/config/network)" ]]; then
 	[ ${#ra0mac} == 17 ] && sed -i "s/00:1A:56:99:99:99/"$ra0mac"/g" /etc/config/wireless
 	[ ${#ra1mac} == 17 ] && sed -i "s/00:1A:56:99:99:98/"$ra1mac"/g" /etc/config/wireless
 
-	#change ntp server
+	# check 2.4G/5G selection slide switch
+#	sed -i "/htmode/a \	option disabled '1'" /etc/config/wireless
+#	sed -i "/encryption/a \	option disabled '1'" /etc/config/wireless
+	# read GPIO 17
+#	if [ -e /root/2g-switch ]; then
+#		echo "2.4G, control GPIO 5" > /dev/console
+#		sed -i "/wifi-device 'radio0'/,/wifi-device 'radio1'/{/option disabled/d}" /etc/config/wireless
+#	else
+#		echo "5G, control GPIO 5" > /dev/console
+#		sed -i "/wifi-device 'radio1'/,$ {/option disabled/d}" /etc/config/wireless
+#	fi
+
+	# change ntp server
 	sed -i "s/1.openwrt.pool.ntp.org/1.kr.pool.ntp.org/g" /etc/config/system
 	sed -i "s/2.openwrt.pool.ntp.org/2.asia.pool.ntp.org/g" /etc/config/system
 	sed -i "s/3.openwrt.pool.ntp.org/3.time.google.com/g" /etc/config/system
@@ -116,4 +128,24 @@ elif [ ${#ra1mac} == 17 ] &&  [ -z "$(grep "$ra1mac" /etc/config/wireless)" ]; t
 
 	rm $TMPFILE
 fi
+
+# check 2.4G/5G selection slide switch
+if [ -e /root/config/wifi-disable ]; then
+	return 0
+fi
+
+sed -i "/option disabled '1'/d" /etc/config/wireless
+sed -i "/htmode/a \	option disabled '1'" /etc/config/wireless
+sed -i "/encryption/a \	option disabled '1'" /etc/config/wireless
+# read GPIO 17, maybe low means 2G && high means 5G
+if [ -e /root/2g-switch ]; then
+	echo "2.4G, control GPIO 5 to low" > /dev/console
+	sed -i "/wifi-device 'radio0'/,/wifi-device 'radio1'/{/option disabled/d}" /etc/config/wireless
+else
+	echo "5G, control GPIO 5 to high" > /dev/console
+	sed -i "/wifi-device 'radio1'/,$ {/option disabled/d}" /etc/config/wireless
+fi
+
+# control attenuator /root/config/rf-att-strength
+echo "PARKIS: need to set attenuation value" > /dev/console
 
