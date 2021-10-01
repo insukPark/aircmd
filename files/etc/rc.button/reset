@@ -17,9 +17,20 @@ timeout)
 released)
 	if [ "$SEEN" -lt 2 ]
 	then
+		if [[ -e /root/config/wps-timeout ]]; then
+			wpstmout=$(cat /root/config/wps-timeout)
+		else
+			wpstmout=120
+		fi
+		wpssleeptime=2
+		let wpstmoutcnt=wpstmout/wpssleeptime
+		let wpstmoutcntmod=wpstmout%wpssleeptime
+		[ $wpstmoutcntmod -gt 0 ] && let wpstmoutcnt=wpstmoutcnt+1
+
 		logger -t WPS detected push button for wps
 		echo "WPS..." > /dev/console
-		echo timer > /sys/devices/platform/leds/leds/zbt-wg3526:green:status/trigger
+		WPSLED=$(ls /sys/devices/platform/leds/leds/)
+		echo timer > /sys/devices/platform/leds/leds/$WPSLED/trigger
 		cd /var/run/hostapd
 		for socket in *; do
 			[ -S "$socket" ] || continue
@@ -27,28 +38,27 @@ released)
 			logger -t WPS "$socket" actived
 		done
 
-		echo "sleep 2" > /dev/console
-		sleep 2
+#		echo "sleep 2" > /dev/console
+		sleep $wpssleeptime
 		cnt=1
 		for socket in *; do
 			[ -S "$socket" ] || continue
-			for i in $(seq 1 60); do
+			for i in $(seq 1 $wpstmoutcnt); do
 				if [[ ! -z "$(hostapd_cli -i "$socket" wps_get_status | grep 'PBC Status: Active')" ]]; then
-					echo "sleep 2" > /dev/console
-					sleep 2
+#					echo "sleep 2" > /dev/console
+					sleep $wpssleeptime
 					let cnt=cnt+1
-					if [ $cnt == 60 ]; then
-						echo "No Active, So Exit !!!" > /dev/console
+					if [ $cnt == $wpstmoutcnt ]; then
+#						echo "No Active, So Exit !!!" > /dev/console
 						logger -t WPS deactived
-						echo default-on > /sys/devices/platform/leds/leds/zbt-wg3526:green:status/trigger
+						echo default-on > /sys/devices/platform/leds/leds/$WPSLED/trigger
 						exit 0
 					fi
 				fi
 			done
 		done
 
-		sleep 1
-		echo default-on > /sys/devices/platform/leds/leds/zbt-wg3526:green:status/trigger
+		echo default-on > /sys/devices/platform/leds/leds/$WPSLED/trigger
 	elif [ "$SEEN" -ge 5 -a -n "$OVERLAY" ]
 	then
 		echo "FACTORY RESET" > /dev/console
