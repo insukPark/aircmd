@@ -72,13 +72,15 @@ elif [ "$1" == "stop" ]; then
 elif [ ${1} == "mode" ] && [ ${2} == "on" ]; then
 	echo "WPS always-on mode command..." > /dev/console
 	if [[ -e /root/config/wps-mode-always-on ]]; then
-		echo "already 'vt_wps.sh mode on'..." > /dev/console
-		logger -t WPS wps always-on mode command received again in always-on
-		return 0
-	else
-		logger -t WPS wps always-on mode command received
-		echo 1 > /root/config/wps-mode-always-on
+		wpspid="$(cat /root/config/wps-mode-always-on)"
+		if [ ! -z "$(ps | grep ^$wpspid)" ]; then
+			echo "already 'vt_wps.sh mode on'..." > /dev/console
+			logger -t WPS wps always-on mode command received again in always-on
+			return 0
+		fi
 	fi
+	logger -t WPS wps always-on mode command received
+	echo 1 > /root/config/wps-mode-always-on
 
 	cur_active=0
 	WPSLED=$(ls /sys/devices/platform/leds/leds/)
