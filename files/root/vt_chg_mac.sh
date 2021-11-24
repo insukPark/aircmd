@@ -24,7 +24,7 @@ done < $TMPFILE
 rm $TMPFILE
 
 #check first boot after factory
-if [[ ! -z "$(grep f8:5e:3c:12:d7:84 /etc/config/network)" ]]; then
+if [[ -n "$(grep f8:5e:3c:12:d7:84 /etc/config/network)" ]]; then
 	echo "PARKIS: /root/vt_chg_mac.sh change mac..." > /dev/console
 #	grep f8:5e:3c:12:d7:84 /etc/config/network > /dev/console
 	sed -i "s/192.168.1.1/192.168.11.1/g" /etc/config/network
@@ -51,17 +51,29 @@ if [[ ! -z "$(grep f8:5e:3c:12:d7:84 /etc/config/network)" ]]; then
 	[ ${#ra0mac} == 17 ] && sed -i "s/00:1A:56:99:99:99/"$ra0mac"/g" /etc/config/wireless
 	[ ${#ra1mac} == 17 ] && sed -i "s/00:1A:56:99:99:98/"$ra1mac"/g" /etc/config/wireless
 
+#if 0 PARKIS
 	# check 2.4G/5G selection slide switch
 #	sed -i "/htmode/a \	option disabled '1'" /etc/config/wireless
 #	sed -i "/encryption/a \	option disabled '1'" /etc/config/wireless
 	# read GPIO 17
-#	if [ -e /root/2g-switch ]; then
-#		echo "2.4G, control GPIO 5" > /dev/console
-#		sed -i "/wifi-device 'radio0'/,/wifi-device 'radio1'/{/option disabled/d}" /etc/config/wireless
-#	else
-#		echo "5G, control GPIO 5" > /dev/console
-#		sed -i "/wifi-device 'radio1'/,$ {/option disabled/d}" /etc/config/wireless
-#	fi
+	#if [ ! -e /sys/class/gpio/gpio17 ]; then
+		#echo 17 > /sys/class/gpio/export
+		#echo in > /sys/class/gpio/gpio17/direction
+	#fi
+	#if [ ! -e /sys/class/gpio/gpio5 ]; then
+		#echo 5 > /sys/class/gpio/export
+		#echo out > /sys/class/gpio/gpio5/direction
+	#fi
+	#if [ -e /root/2g-switch ]; then	# if [[ "$(cat /sys/class/gpio/gpio17/value)" -eq 1 ]]; then # 1 means 2.4G
+		#echo "2.4G, control GPIO 5" > /dev/console
+		#echo 0 > /sys/class/gpio/gpio5/value
+		#sed -i "/wifi-device 'radio0'/,/wifi-device 'radio1'/{/option disabled/d}" /etc/config/wireless
+	#else
+		#echo "5G, control GPIO 5" > /dev/console
+		#echo 1 > /sys/class/gpio/gpio5/value
+		#sed -i "/wifi-device 'radio1'/,$ {/option disabled/d}" /etc/config/wireless
+	#fi
+#endif PARKIS
 
 	# change ntp server
 	sed -i "s/1.openwrt.pool.ntp.org/1.kr.pool.ntp.org/g" /etc/config/system
@@ -137,15 +149,30 @@ fi
 sed -i "/option disabled '1'/d" /etc/config/wireless
 sed -i "/htmode/a \	option disabled '1'" /etc/config/wireless
 sed -i "/encryption/a \	option disabled '1'" /etc/config/wireless
-# read GPIO 17, maybe low means 2G && high means 5G
-if [ -e /root/2g-switch ]; then
-	echo "2.4G, control GPIO 5 to low" > /dev/console
+# read GPIO 17, maybe high means 2G && low means 5G
+if [ ! -e /sys/class/gpio/gpio17 ]; then
+	echo 17 > /sys/class/gpio/export
+	echo in > /sys/class/gpio/gpio17/direction
+fi
+if [ ! -e /sys/class/gpio/gpio5 ]; then
+	echo 5 > /sys/class/gpio/export
+	echo out > /sys/class/gpio/gpio5/direction
+fi
+if [[ "$(cat /sys/class/gpio/gpio17/value)" -eq 1 ]]; then # 1 means 2.4G	#if [ -e /root/2g-switch ]; then
+	echo "2.4G, control GPIO 5 to high" > /dev/console
+	echo 1 > /sys/class/gpio/gpio5/value
 	sed -i "/wifi-device 'radio0'/,/wifi-device 'radio1'/{/option disabled/d}" /etc/config/wireless
-else
-	echo "5G, control GPIO 5 to high" > /dev/console
+else	# 5G wifi
+	echo "5G, control GPIO 5 to low" > /dev/console
+	echo 0 > /sys/class/gpio/gpio5/value
 	sed -i "/wifi-device 'radio1'/,$ {/option disabled/d}" /etc/config/wireless
 fi
 
 # control attenuator /root/config/rf-att-strength
-echo "PARKIS: need to set attenuation value" > /dev/console
+#echo "PARKIS: need to set attenuation value" > /dev/console
+if [ -e /root/config/rf-att-strength ]; then
+	/root/vt_attenuator.sh $(cat /root/config/rf-att-strength)
+else
+	/root/vt_attenuator.sh 0
+fi
 
