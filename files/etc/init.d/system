@@ -20,6 +20,11 @@ system_config() {
 	}
 
 	echo "PARKIS: /etc/init.d/system system_config" > /dev/console
+	#PARKIS: change firewall
+	sed -i "/option syn_flood/a \	option synflood_protect\	1" /etc/config/firewall
+	sed -i "/option syn_flood/a \	option flow_offloading\	1" /etc/config/firewall
+	sed -i "/option syn_flood/d" /etc/config/firewall
+
 	#PARKIS: change hostname
 	if [ $hostname != VX2000 ]; then
 		sed -i "s/"$hostname"/VX2000/g" /etc/config/system
