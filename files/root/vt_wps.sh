@@ -27,30 +27,60 @@ let wpstmoutcntmod=wpstmout%wpssleeptime
 
 if [ "$1" == "start" ]; then
 	logger -t WPS wps start command received
+	rm -rf /var/wps-stop
 	echo "WPS start command..." > /dev/console
 	WPSLED=$(ls /sys/devices/platform/leds/leds/)
 	echo timer > /sys/devices/platform/leds/leds/$WPSLED/trigger
-	cd /var/run/hostapd
-	for socket in *; do
-		[ -S "$socket" ] || continue
-		hostapd_cli -i "$socket" wps_pbc
-		logger -t WPS "$socket" actived
-	done
+	# -gt 3 means keep going if remain-time over 6sec
+	while [ $wpstmoutcnt -gt 3 ]; do
+		cd /var/run/hostapd
+		for socket in *; do
+			[ -S "$socket" ] || continue
+			hostapd_cli -i "$socket" wps_pbc
+			logger -t WPS "$socket" actived
+		done
 
-	sleep $wpssleeptime
-	cnt=1
-	for socket in *; do
-		[ -S "$socket" ] || continue
-		for i in $(seq 1 $wpstmoutcnt); do
-			if [[ ! -z "$(hostapd_cli -i "$socket" wps_get_status | grep 'PBC Status: Active')" ]]; then
-				sleep $wpssleeptime
-				let cnt=cnt+1
-				if [ $cnt == $wpstmoutcnt ]; then
-					logger -t WPS deactived with timeout
+		sleep $wpssleeptime
+		cnt=1
+		for socket in *; do
+			[ -S "$socket" ] || continue
+			for iii in $(seq 1 $wpstmoutcnt); do
+				if [[ -e /var/wps-stop ]]; then
+					logger -t WPS deactived with stop-command
+					rm -rf /var/wps-stop
+					for socket in *; do
+						[ -S "$socket" ] || continue
+						hostapd_cli -i "$socket" wps_cancel
+						logger -t WPS "$socket" canceled
+					done
 					echo default-on > /sys/devices/platform/leds/leds/$WPSLED/trigger
 					exit 0
+				elif [[ ! -z "$(hostapd_cli -i "$socket" wps_get_status | grep 'PBC Status: Overlap')" ]]; then
+					logger -t WPS deactived with overlap status
+					killall -9 hostapd
+					exit 0
+				elif [[ ! -z "$(hostapd_cli -i "$socket" wps_get_status | grep 'PBC Status: Timed-out')" ]]; then
+					let wpstmoutcnt=wpstmoutcnt-60
+					break
+				elif [[ ! -z "$(hostapd_cli -i "$socket" wps_get_status | grep 'PBC Status: Disabled')" ]]; then
+					let wpstmoutcnt=0
+					echo default-on > /sys/devices/platform/leds/leds/$WPSLED/trigger
+					exit 0
+				elif [[ ! -z "$(hostapd_cli -i "$socket" wps_get_status | grep 'PBC Status: Active')" ]]; then
+					sleep $wpssleeptime
+					let cnt=cnt+1
+					if [ $cnt == $wpstmoutcnt ]; then
+						logger -t WPS deactived with timeout
+						for socket in *; do
+							[ -S "$socket" ] || continue
+							hostapd_cli -i "$socket" wps_cancel
+							logger -t WPS "$socket" canceled
+						done
+						echo default-on > /sys/devices/platform/leds/leds/$WPSLED/trigger
+						exit 0
+					fi
 				fi
-			fi
+			done
 		done
 	done
 
@@ -58,17 +88,13 @@ if [ "$1" == "start" ]; then
 elif [ "$1" == "stop" ]; then
 	logger -t WPS wps stop command received
 	echo "WPS stop command..." > /dev/console
-#	if [[ -z "$( ps | grep "vt_wps.sh start")" ]]; then
-#		logger -t WPS no actived process vt_wps.sh
-#		exit 0
-#	fi
-
-	cd /var/run/hostapd
-	for socket in *; do
-		[ -S "$socket" ] || continue
-		hostapd_cli -i "$socket" wps_cancel
-		logger -t WPS "$socket" canceled
-	done
+	echo 1 > /var/wps-stop
+#	cd /var/run/hostapd
+#	for socket in *; do
+#		[ -S "$socket" ] || continue
+#		hostapd_cli -i "$socket" wps_cancel
+#		logger -t WPS "$socket" canceled
+#	done
 elif [ ${1} == "mode" ] && [ ${2} == "on" ]; then
 	echo "WPS always-on mode command..." > /dev/console
 	if [[ -e /root/config/wps-mode-always-on ]]; then
@@ -80,7 +106,7 @@ elif [ ${1} == "mode" ] && [ ${2} == "on" ]; then
 		fi
 	fi
 	logger -t WPS wps always-on mode command received
-	echo 1 > /root/config/wps-mode-always-on
+	echo $$ > /root/config/wps-mode-always-on
 
 	cur_active=0
 	WPSLED=$(ls /sys/devices/platform/leds/leds/)
@@ -113,6 +139,12 @@ elif [ ${1} == "mode" ] && [ ${2} == "on" ]; then
 				if [[ ! -z "$(hostapd_cli -i "$socket" wps_get_status | grep 'PBC Status: Active')" ]]; then
 					let cur_active=1
 					sleep $wpssleeptime
+				elif [[ ! -z "$(hostapd_cli -i "$socket" wps_get_status | grep 'PBC Status: Overlap')" ]]; then
+					logger -t WPS reactived with overlap status
+					killall -9 hostapd
+					sleep $wpssleeptime
+					sleep $wpssleeptime
+					let cur_active=0
 				fi
 			done
 
